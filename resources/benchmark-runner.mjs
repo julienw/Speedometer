@@ -33,22 +33,19 @@ class Page {
 
     querySelector(selector) {
         const element = this._frame.contentDocument.querySelector(selector);
-        if (element === null)
-            return null;
+        if (element === null) return null;
         return this._wrapElement(element);
     }
 
     querySelectorAll(selector) {
         const elements = Array.from(this._frame.contentDocument.querySelectorAll(selector));
-        for (let i = 0; i < elements.length; i++)
-            elements[i] = this._wrapElement(elements[i]);
+        for (let i = 0; i < elements.length; i++) elements[i] = this._wrapElement(elements[i]);
         return elements;
     }
 
     getElementById(id) {
         const element = this._frame.contentDocument.getElementById(id);
-        if (element === null)
-            return null;
+        if (element === null) return null;
         return this._wrapElement(element);
     }
 
@@ -64,7 +61,7 @@ class Page {
 
 const NATIVE_OPTIONS = {
     bubbles: true,
-    cancellable: true,
+    cancelable: true,
 };
 
 class PageElement {
@@ -75,7 +72,18 @@ class PageElement {
     }
 
     setValue(value) {
-        this.#node.value = value;
+        const element = this.#node;
+        const { set: valueSetter } = Object.getOwnPropertyDescriptor(element, "value") || {};
+        const prototype = Object.getPrototypeOf(element);
+        const { set: prototypeValueSetter } = Object.getOwnPropertyDescriptor(prototype, "value") || {};
+        if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+            prototypeValueSetter.call(element, value);
+        } else {
+            /* istanbul ignore if */
+            // eslint-disable-next-line no-lonely-if -- Can't be ignored by istanbul otherwise
+            if (valueSetter) valueSetter.call(element, value);
+            else throw new Error("The given element does not have a value setter");
+        }
     }
 
     click() {
@@ -90,8 +98,7 @@ class PageElement {
         if (eventName === "submit")
             // FIXME FireFox doesn't like `new Event('submit')
             this._dispatchSubmitEvent();
-        else
-            this.#node.dispatchEvent(new eventType(eventName, options));
+        else this.#node.dispatchEvent(new eventType(eventName, options));
     }
 
     _dispatchSubmitEvent() {
@@ -109,8 +116,7 @@ class PageElement {
             which: ENTER_KEY_CODE,
             key: "ENTER",
         };
-        if (options !== undefined)
-            eventOptions = Object.assign(eventOptions, options);
+        if (options !== undefined) eventOptions = Object.assign(eventOptions, options);
         const event = new KeyboardEvent(type, eventOptions);
         this.#node.dispatchEvent(event);
     }
@@ -154,8 +160,7 @@ export class BenchmarkRunner {
             style.top = "0px";
         }
 
-        if (this._client?.willAddTestFrame)
-            await this._client.willAddTestFrame(frame);
+        if (this._client?.willAddTestFrame) await this._client.willAddTestFrame(frame);
 
         document.body.insertBefore(frame, document.body.firstChild);
         this._frame = frame;
@@ -163,12 +168,9 @@ export class BenchmarkRunner {
     }
 
     async runMultipleIterations(iterationCount) {
-        if (this._client?.willStartFirstIteration)
-            await this._client.willStartFirstIteration(iterationCount);
-        for (let i = 0; i < iterationCount; i++)
-            await this._runAllSuites();
-        if (this._client?.didFinishLastIteration)
-            await this._client.didFinishLastIteration(this._metrics);
+        if (this._client?.willStartFirstIteration) await this._client.willStartFirstIteration(iterationCount);
+        for (let i = 0; i < iterationCount; i++) await this._runAllSuites();
+        if (this._client?.didFinishLastIteration) await this._client.didFinishLastIteration(this._metrics);
     }
 
     async _runAllSuites() {
@@ -179,10 +181,8 @@ export class BenchmarkRunner {
         this._page = new Page(this._frame);
 
         for (const suite of this._suites) {
-            if (!suite.disabled)
-                await this._runSuite(suite);
+            if (!suite.disabled) await this._runSuite(suite);
         }
-
 
         // Remove frame to clear the view for displaying the results.
         this._removeFrame();
@@ -191,8 +191,7 @@ export class BenchmarkRunner {
 
     async _runSuite(suite) {
         await this._prepareSuite(suite);
-        for (const test of suite.tests)
-            await this._runTestAndRecordResults(suite, test);
+        for (const test of suite.tests) await this._runTestAndRecordResults(suite, test);
     }
 
     async _prepareSuite(suite) {
@@ -209,8 +208,7 @@ export class BenchmarkRunner {
     async _runTestAndRecordResults(suite, test) {
         /* eslint-disable-next-line no-async-promise-executor */
         return new Promise(async (resolve) => {
-            if (this._client?.willRunTest)
-                await this._client.willRunTest(suite, test);
+            if (this._client?.willRunTest) await this._client.willRunTest(suite, test);
 
             setTimeout(() => {
                 this._runTest(suite, test, this._page, resolve);
@@ -259,8 +257,7 @@ export class BenchmarkRunner {
         suiteResults.tests[test.name] = { tests: { Sync: syncTime, Async: asyncTime }, total: total };
         suiteResults.total += total;
 
-        if (this._client?.didRunTest)
-            await this._client.didRunTest(suite, test);
+        if (this._client?.didRunTest) await this._client.didRunTest(suite, test);
 
         testDoneCallback();
     }
@@ -296,24 +293,20 @@ export class BenchmarkRunner {
                 const results = items[name];
                 const metric = getMetric(prefix + name);
                 metric.add(results.total ?? results);
-                if (metric.parent !== parent)
-                    parent.addChild(metric);
-                if (results.tests)
-                    collectSubMetrics(`${metric.name}-`, results.tests, metric);
+                if (metric.parent !== parent) parent.addChild(metric);
+                if (results.tests) collectSubMetrics(`${metric.name}-`, results.tests, metric);
             }
         };
 
         const iterationResults = this._measuredValues.tests;
         const iterationTotal = getMetric(`Iteration-${this._metrics.Total.length}-Total`);
-        for (const results of Object.values(iterationResults))
-            iterationTotal.add(results.total);
+        for (const results of Object.values(iterationResults)) iterationTotal.add(results.total);
         iterationTotal.computeAggregatedMetrics();
 
         this._metrics.Total.add(iterationTotal.sum);
         this._metrics.Score.add(MILLISECONDS_PER_MINUTE / iterationTotal.sum);
         collectSubMetrics("", iterationResults);
 
-        for (const metric of Object.values(this._metrics))
-            metric.computeAggregatedMetrics();
+        for (const metric of Object.values(this._metrics)) metric.computeAggregatedMetrics();
     }
 }
