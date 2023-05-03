@@ -15650,6 +15650,7 @@ const DEFAULT_OPTIONS = {
   // The height is especially used for the ratio.
   height: 1e3
 };
+const AIRPORT_COUNT_PER_STATE = 6;
 let preparedData;
 function prepare() {
   const { airports, flights } = parseAirportsInformation();
@@ -15665,7 +15666,7 @@ function prepare() {
       var _a;
       return -((_a = flightsByAirport.get(iata)) == null ? void 0 : _a.total);
     });
-    const mostUsedAirportsInState = sorted.slice(0, 6);
+    const mostUsedAirportsInState = sorted.slice(0, AIRPORT_COUNT_PER_STATE);
     return {
       state,
       total: totalFlightsInState,
@@ -15745,7 +15746,6 @@ function addStackedBars() {
     },
     y: { grid: true, tickFormat: "~s" },
     marks: [
-      // stacked bars
       barY(preparedData.plotData, {
         x: "state",
         y: "total",
@@ -15753,9 +15753,7 @@ function addStackedBars() {
         title: (d) => `${d.iata === "Other" ? "Other" : `${d.name}, ${d.city} (${d.iata})`}
 ${format$1(",")(d.total)} flights`
       }),
-      // labels
       text(preparedData.stateInformationSortedArray, { x: "state", y: "total", text: (d) => format$1(".2~s")(d.total), dy: -10 }),
-      // horizontal bottom line
       ruleY([0])
     ]
   };
@@ -15835,7 +15833,6 @@ function addDottedBars() {
         title: (d) => `${d.iata === "Other" ? "Other" : `${d.name}, ${d.city} (${d.iata})`}
 ${format$1(",")(Math.abs(d.value))} ${d.value > 0 ? "inward" : "outward"} flights`
       }),
-      // horizontal bottom line
       ruleY([0])
     ]
   };
