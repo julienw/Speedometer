@@ -64,11 +64,19 @@ class View {
         this.$toggleAll = qs(".toggle-all-label");
         this.$toggleAllInput = qs(".toggle-all");
         this.$newTodo = qs(".new-todo");
+        function replaceContentWithHtml(element, html) {
+            // This has been adopted from
+            // https://github.com/unpoly/unpoly/blob/78b1dc0d5729d083e7cb9dfcb73272451c0a48a8/src/unpoly/element.js#L755-L773
+            const range = document.createRange();
+            range.setStart(document.body, 0);
+            const fragment = range.createContextualFragment(html.trim());
+            element.replaceChildren(...fragment.childNodes);
+        }
 
         this.viewCommands = {
-            showEntries: (parameter) => this.$todoList.innerHTML = this.template.show(parameter),
+            showEntries: (parameter) => replaceContentWithHtml(this.$todoList, this.template.show(parameter)),
             removeItem: (parameter) => this._removeItem(parameter),
-            updateElementCount: (parameter) => this.$todoItemCounter.innerHTML = this.template.itemCounter(parameter),
+            updateElementCount: (parameter) => replaceContentWithHtml(this.$todoItemCounter, this.template.itemCounter(parameter)),
             clearCompletedButton: (parameter) => this._clearCompletedButton(parameter.completed, parameter.visible),
             contentBlockVisibility: (parameter) => this.$main.style.display = this.$footer.style.display = parameter.visible ? "block" : "none",
             toggleAll: (parameter) => this.$toggleAll.checked = parameter.checked,
@@ -88,7 +96,7 @@ class View {
     }
 
     _clearCompletedButton(completedCount, visible) {
-        this.$clearCompleted.innerHTML = this.template.clearCompletedButton(completedCount);
+        this.$clearCompleted.textContent = this.template.clearCompletedButton(completedCount);
         this.$clearCompleted.style.display = visible ? "block" : "none";
     }
 
