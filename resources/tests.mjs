@@ -247,23 +247,25 @@ Suites.push({
         element.focus();
     },
     tests: [
-        new BenchmarkTestStep(`Adding${numberOfItemsToAdd}Items`, (page) => {
-            const newTodo = page.querySelector(".new-todo");
-            for (let i = 0; i < numberOfItemsToAdd; i++) {
-                newTodo.setValue(getTodoText(defaultLanguage, i));
-                newTodo.dispatchEvent("input");
-                newTodo.enter("keydown");
+        new BenchmarkTestStep("Adding a lot of items", (page) => {
+            const addButton = page.querySelector("button");
+            addButton.click();
+        }),
+
+        new BenchmarkTestStep("scroll down the page", (page) => {
+            const scrollInput = page.querySelector("input[type=range]");
+            const step = scrollInput.getPropertyValue("step");
+            if (isNaN(step))
+                throw new Error(`The step value ${step} isn't a number.`);
+
+            const max = scrollInput.getPropertyValue("max");
+            if (isNaN(max))
+                throw new Error(`The max value ${max} isn't a number.`);
+
+            for (let value = +step; value <= +max; value += +step) {
+                scrollInput.setValue(value);
+                scrollInput.dispatchEvent("input");
             }
-        }),
-        new BenchmarkTestStep("CompletingAllItems", (page) => {
-            const checkboxes = page.querySelectorAll(".toggle");
-            for (let i = 0; i < numberOfItemsToAdd; i++)
-                checkboxes[i].click();
-        }),
-        new BenchmarkTestStep("DeletingAllItems", (page) => {
-            const deleteButtons = page.querySelectorAll(".destroy");
-            for (let i = numberOfItemsToAdd - 1; i >= 0; i--)
-                deleteButtons[i].click();
         }),
     ],
 });
